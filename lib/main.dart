@@ -15,8 +15,21 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Test Parns Work',
       theme: ThemeData(
-        primarySwatch: Colors.indigo,
         useMaterial3: true,
+        colorSchemeSeed: const Color(0xFF6C5CE7),
+        scaffoldBackgroundColor: const Color(0xFFF6F5FB),
+        fontFamily: 'Roboto',
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Color(0xFF2D2D3A),
+          elevation: 0,
+          centerTitle: false,
+          titleTextStyle: TextStyle(
+            color: Color(0xFF2D2D3A),
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
       debugShowCheckedModeBanner: false,
       home: const MainNavigation(),
@@ -36,6 +49,8 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
+  static const _accent = Color(0xFF6C5CE7);
+
   final List<Widget> _screens = const [
     ControlsDemoScreen(),
     DataListScreen(),
@@ -44,8 +59,14 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<String> _titles = const [
     'UI Controls Demo',
-    'Data List (API)',
+    'Data List',
     'Save Data',
+  ];
+
+  final List<_NavItem> _navItems = const [
+    _NavItem(icon: Icons.widgets_rounded, label: 'Controls'),
+    _NavItem(icon: Icons.grid_view_rounded, label: 'Data'),
+    _NavItem(icon: Icons.save_rounded, label: 'Save'),
   ];
 
   @override
@@ -53,15 +74,69 @@ class _MainNavigationState extends State<MainNavigation> {
     return Scaffold(
       appBar: AppBar(title: Text(_titles[_currentIndex])),
       body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.widgets), label: 'Controls'),
-          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Data'),
-          BottomNavigationBarItem(icon: Icon(Icons.save), label: 'Save'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(_navItems.length, (index) {
+                final selected = index == _currentIndex;
+                final item = _navItems[index];
+                return Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => setState(() => _currentIndex = index),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: selected ? _accent.withOpacity(0.1) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            item.icon,
+                            size: 22,
+                            color: selected ? _accent : Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            item.label,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                              color: selected ? _accent : Colors.grey.shade400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
       ),
     );
   }
+}
+
+class _NavItem {
+  final IconData icon;
+  final String label;
+  const _NavItem({required this.icon, required this.label});
 }
