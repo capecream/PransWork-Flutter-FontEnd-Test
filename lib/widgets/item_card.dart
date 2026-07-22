@@ -26,18 +26,22 @@ class CategoryStyle {
   }
 }
 
-/// การ์ดแสดงข้อมูล 1 รายการ ดีไซน์ให้ดูสะอาดตา มี avatar สี
-/// ตามหมวดหมู่ + chip + shadow นุ่มๆ แทน ListTile เดิม
+/// การ์ดแสดงข้อมูล 1 รายการ มี avatar สีตามหมวดหมู่ + chip + shadow นุ่มๆ
+/// พร้อมปุ่มแก้ไข (ปากกา) และปุ่มลบ ต่อรายการ
 class ItemCard extends StatelessWidget {
   final Item item;
   final ValueChanged<bool?>? onCheckboxChanged;
   final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const ItemCard({
     super.key,
     required this.item,
     this.onCheckboxChanged,
     this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -111,21 +115,40 @@ class ItemCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: accent.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          item.category,
-                          style: TextStyle(
-                            color: accent,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: accent.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              item.category,
+                              style: TextStyle(
+                                color: accent,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
+                          const Spacer(),
+                          if (onEdit != null)
+                            _iconButton(
+                              icon: Icons.edit_rounded,
+                              color: const Color(0xFF0984E3),
+                              onTap: onEdit!,
+                            ),
+                          if (onDelete != null) ...[
+                            const SizedBox(width: 6),
+                            _iconButton(
+                              icon: Icons.delete_outline_rounded,
+                              color: const Color(0xFFE74C3C),
+                              onTap: onDelete!,
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
@@ -133,6 +156,25 @@ class ItemCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _iconButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(9),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(9),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(7),
+          child: Icon(icon, size: 16, color: color),
         ),
       ),
     );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frontend/models/item.dart';
+import 'package:frontend/mode ls/item.dart';
 import 'package:frontend/widgets/item_card.dart';
 
 void main() {

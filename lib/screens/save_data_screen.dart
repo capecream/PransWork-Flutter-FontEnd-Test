@@ -3,7 +3,11 @@ import '../models/item.dart';
 import '../services/api_service.dart';
 
 class SaveDataScreen extends StatefulWidget {
-  const SaveDataScreen({super.key});
+  final Item? editItem;
+
+  const SaveDataScreen({super.key, this.editItem});
+
+  bool get isEditing => editItem != null;
 
   @override
   State<SaveDataScreen> createState() => _SaveDataScreenState();
@@ -11,16 +15,26 @@ class SaveDataScreen extends StatefulWidget {
 
 class _SaveDataScreenState extends State<SaveDataScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  late final TextEditingController _nameController;
+  late final TextEditingController _descriptionController;
   final ApiService _apiService = ApiService();
 
-  String _category = 'General';
-  bool _isUrgent = false;
+  late String _category;
+  late bool _isUrgent;
   bool _isSaving = false;
 
   static const _accent = Color(0xFF6C5CE7);
   final List<String> _categories = ['General', 'Urgent', 'Follow-up'];
+
+  @override
+  void initState() {
+    super.initState();
+    final item = widget.editItem;
+    _nameController = TextEditingController(text: item?.name ?? '');
+    _descriptionController = TextEditingController(text: item?.description ?? '');
+    _category = item?.category ?? 'General';
+    _isUrgent = item?.category == 'Urgent';
+  }
 
   @override
   void dispose() {
@@ -34,33 +48,54 @@ class _SaveDataScreenState extends State<SaveDataScreen> {
 
     setState(() => _isSaving = true);
     try {
-      final newItem = Item(
-        id: '',
-        name: _nameController.text,
-        description: _descriptionController.text,
-        category: _isUrgent ? 'Urgent' : _category,
-      );
-      await _apiService.saveItem(newItem);
-      if (!mounted) return;
-      _showResultModal(success: true);
-      _formKey.currentState!.reset();
-      _nameController.clear();
-      _descriptionController.clear();
-      setState(() => _isUrgent = false);
+      final category = _isUrgent ? 'Urgent' : _category;
+
+      if (widget.isEditing) {
+        final updatedItem = Item(
+          id: widget.editItem!.id,
+          name: _nameController.text,
+          description: _descriptionController.text,
+          category: category,
+        );
+        await _apiService.updateItem(updatedItem);
+        if (!mounted) return;
+        _showResultModal(success: true, isEdit: true, popAfterClose: true);
+      } else {
+        final newItem = Item(
+          id: '',
+          name: _nameController.text,
+          description: _descriptionController.text,
+          category: category,
+        );
+        await _apiService.saveItem(newItem);
+        if (!mounted) return;
+        _showResultModal(success: true, isEdit: false, popAfterClose: false);
+        _formKey.currentState!.reset();
+        _nameController.clear();
+        _descriptionController.clear();
+        setState(() => _isUrgent = false);
+      }
     } catch (e) {
       if (!mounted) return;
-      _showResultModal(success: false, errorMessage: e.toString());
+      _showResultModal(success: false, isEdit: widget.isEditing, errorMessage: e.toString());
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
   }
 
-  /// Modal แจ้งผลลัพธ์หลังกดบันทึก/ส่งข้อมูล
-  void _showResultModal({required bool success, String? errorMessage}) {
+  /// Modal แจ้งผลลัพธ์หลังกดบันทึก/แก้ไข
+  /// ถ้า popAfterClose = true จะปิดหน้าจอนี้กลับไปหน้าก่อนหน้าหลังกดตกลง
+  /// (ใช้ตอนแก้ไขข้อมูลเสร็จ เพื่อกลับไปหน้า Data List ให้อัตโนมัติ)
+  void _showResultModal({
+    required bool success,
+    required bool isEdit,
+    String? errorMessage,
+    bool popAfterClose = false,
+  }) {
     final color = success ? const Color(0xFF00B894) : const Color(0xFFE74C3C);
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -79,12 +114,16 @@ class _SaveDataScreenState extends State<SaveDataScreen> {
               ),
               const SizedBox(height: 14),
               Text(
-                success ? 'บันทึกสำเร็จ' : 'เกิดข้อผิดพลาด',
+                success ? (isEdit ? 'แก้ไขสำเร็จ' : 'บันทึกสำเร็จ') : 'เกิดข้อผิดพลาด',
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
               const SizedBox(height: 6),
               Text(
-                success ? 'ข้อมูลถูกส่งไปยัง backend เรียบร้อย' : (errorMessage ?? ''),
+                success
+                    ? (isEdit
+                        ? 'ข้อมูลถูกแก้ไขเรียบร้อยแล้ว'
+                        : 'ข้อมูลถูกส่งไปยัง backend เรียบร้อย')
+                    : (errorMessage ?? ''),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               ),
@@ -92,7 +131,12 @@ class _SaveDataScreenState extends State<SaveDataScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                    if (popAfterClose && mounted) {
+                      Navigator.pop(context, true);
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _accent,
                     foregroundColor: Colors.white,
@@ -112,7 +156,7 @@ class _SaveDataScreenState extends State<SaveDataScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final body = Container(
       color: const Color(0xFFF6F5FB),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
@@ -204,8 +248,13 @@ class _SaveDataScreenState extends State<SaveDataScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.save_rounded, size: 18),
-                          label: Text(_isSaving ? 'กำลังบันทึก...' : 'บันทึก / ส่งข้อมูล'),
+                              : Icon(
+                                  widget.isEditing ? Icons.edit_rounded : Icons.save_rounded,
+                                  size: 18,
+                                ),
+                          label: Text(_isSaving
+                              ? 'กำลังบันทึก...'
+                              : (widget.isEditing ? 'บันทึกการแก้ไข' : 'บันทึก / ส่งข้อมูล')),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -226,21 +275,35 @@ class _SaveDataScreenState extends State<SaveDataScreen> {
         ),
       ),
     );
+
+    // ถ้าเป็นโหมดแก้ไข (เปิดจากหน้า Data List) ให้มี AppBar + ปุ่มย้อนกลับ
+    // ถ้าเป็นโหมดเพิ่มใหม่ (อยู่ในแท็บหลัก) ไม่ต้องมี AppBar ซ้อน เพราะ MainNavigation มีให้แล้ว
+    if (widget.isEditing) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('แก้ไขข้อมูล')),
+        body: body,
+      );
+    }
+    return body;
   }
 
   Widget _buildHeader() {
+    final isEdit = widget.isEditing;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF00B894), Color(0xFF55D8B4)],
+        gradient: LinearGradient(
+          colors: isEdit
+              ? [const Color(0xFF0984E3), const Color(0xFF74B9FF)]
+              : [const Color(0xFF00B894), const Color(0xFF55D8B4)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00B894).withOpacity(0.28),
+            color: (isEdit ? const Color(0xFF0984E3) : const Color(0xFF00B894))
+                .withOpacity(0.28),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -255,25 +318,29 @@ class _SaveDataScreenState extends State<SaveDataScreen> {
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.save_alt_rounded, color: Colors.white, size: 26),
+            child: Icon(
+              isEdit ? Icons.edit_rounded : Icons.save_alt_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'บันทึก / ส่งข้อมูล',
-                  style: TextStyle(
+                  isEdit ? 'แก้ไขข้อมูล' : 'บันทึก / ส่งข้อมูล',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 3),
+                const SizedBox(height: 3),
                 Text(
-                  'กรอกฟอร์มแล้วส่งข้อมูลไปยัง backend',
-                  style: TextStyle(color: Colors.white70, fontSize: 12.5),
+                  isEdit ? 'แก้ไขรายการที่เลือกแล้วบันทึก' : 'กรอกฟอร์มแล้วส่งข้อมูลไปยัง backend',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12.5),
                 ),
               ],
             ),

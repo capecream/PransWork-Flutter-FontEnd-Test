@@ -37,8 +37,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// หน้าหลักที่คุมการสลับไปมาระหว่าง 3 หน้าจอตามโจทย์:
-/// 1) UI Controls Demo  2) Data List (API)  3) Save Data
+
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 

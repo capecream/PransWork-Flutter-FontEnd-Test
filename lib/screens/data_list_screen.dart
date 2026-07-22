@@ -3,6 +3,7 @@ import '../models/item.dart';
 import '../services/api_service.dart';
 import '../widgets/item_card.dart';
 import '../widgets/status_widgets.dart';
+import 'save_data_screen.dart';
 
 class DataListScreen extends StatefulWidget {
   const DataListScreen({super.key});
@@ -17,6 +18,7 @@ class _DataListScreenState extends State<DataListScreen> {
   List<Item> _allItems = [];
   String _selectedCategory = 'ทั้งหมด';
   bool _showAsTable = false;
+  bool _isBulkDeleting = false;
 
   static const _accent = Color(0xFF6C5CE7);
 
@@ -33,6 +35,96 @@ class _DataListScreenState extends State<DataListScreen> {
   List<Item> get _filteredItems {
     if (_selectedCategory == 'ทั้งหมด') return _allItems;
     return _allItems.where((i) => i.category == _selectedCategory).toList();
+  }
+
+  List<Item> get _selectedItems => _allItems.where((i) => i.isSelected).toList();
+
+  /// เปิดหน้าฟอร์มแก้ไข แล้ว refresh รายการถ้าแก้ไขสำเร็จ
+  Future<void> _openEdit(Item item) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => SaveDataScreen(editItem: item)),
+    );
+    if (result == true && mounted) {
+      setState(_loadItems);
+    }
+  }
+
+  /// ยืนยันก่อนลบ 1 รายการ
+  Future<void> _confirmDeleteSingle(Item item) async {
+    final confirmed = await _showConfirmDialog(
+      title: 'ลบรายการนี้?',
+      message: 'ต้องการลบ "${item.name}" ใช่หรือไม่ ย้อนกลับไม่ได้',
+    );
+    if (confirmed != true) return;
+
+    try {
+      await _apiService.deleteItem(item.id);
+      if (!mounted) return;
+      setState(_loadItems);
+      _showSnackBar('ลบ "${item.name}" แล้ว');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('ลบไม่สำเร็จ: $e', isError: true);
+    }
+  }
+
+  /// ยืนยันก่อนลบหลายรายการที่ติ๊กเลือกไว้
+  Future<void> _confirmBulkDelete() async {
+    final selected = _selectedItems;
+    if (selected.isEmpty) return;
+
+    final confirmed = await _showConfirmDialog(
+      title: 'ลบ ${selected.length} รายการ?',
+      message: 'ต้องการลบรายการที่เลือกไว้ทั้งหมด ${selected.length} รายการ ย้อนกลับไม่ได้',
+    );
+    if (confirmed != true) return;
+
+    setState(() => _isBulkDeleting = true);
+    try {
+      final ids = selected.map((i) => i.id).toList();
+      await _apiService.deleteItems(ids);
+      if (!mounted) return;
+      setState(_loadItems);
+      _showSnackBar('ลบ ${selected.length} รายการแล้ว');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('ลบไม่สำเร็จ: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isBulkDeleting = false);
+    }
+  }
+
+  Future<bool?> _showConfirmDialog({required String title, required String message}) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(message, style: TextStyle(color: Colors.grey.shade700)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ยกเลิก'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ลบ', style: TextStyle(color: Color(0xFFE74C3C))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? const Color(0xFFE74C3C) : const Color(0xFF00B894),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   /// Modal (dialog) แสดงรายละเอียดของ item ที่เลือก
@@ -86,6 +178,42 @@ class _DataListScreenState extends State<DataListScreen> {
                 style: TextStyle(color: Colors.grey.shade700, fontSize: 13.5, height: 1.5),
               ),
               const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _openEdit(item);
+                      },
+                      icon: const Icon(Icons.edit_rounded, size: 18, color: Color(0xFF0984E3)),
+                      label: const Text('แก้ไข', style: TextStyle(color: Color(0xFF0984E3))),
+                      style: TextButton.styleFrom(
+                        backgroundColor: const Color(0xFF0984E3).withOpacity(0.08),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _confirmDeleteSingle(item);
+                      },
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFE74C3C)),
+                      label: const Text('ลบ', style: TextStyle(color: Color(0xFFE74C3C))),
+                      style: TextButton.styleFrom(
+                        backgroundColor: const Color(0xFFE74C3C).withOpacity(0.08),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
@@ -124,6 +252,7 @@ class _DataListScreenState extends State<DataListScreen> {
 
           _allItems = snapshot.data ?? [];
           final categories = ['ทั้งหมด', ..._allItems.map((e) => e.category).toSet()];
+          final selectedCount = _selectedItems.length;
 
           return Column(
             children: [
@@ -131,7 +260,6 @@ class _DataListScreenState extends State<DataListScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Row(
                   children: [
-                    // Dropdown list ใช้เลือกข้อมูล 1 รายการ (filter หมวดหมู่)
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -191,6 +319,7 @@ class _DataListScreenState extends State<DataListScreen> {
                 ),
               ),
               const SizedBox(height: 6),
+              if (selectedCount > 0) _buildBulkDeleteBar(selectedCount),
               Expanded(
                 child: _showAsTable ? _buildTableView() : _buildCardListView(),
               ),
@@ -201,7 +330,50 @@ class _DataListScreenState extends State<DataListScreen> {
     );
   }
 
-  /// ปุ่มสลับมุมมอง Card / Table แบบ segmented control
+  /// แถบแสดงจำนวนที่เลือกไว้ พร้อมปุ่มลบหลายรายการ (โผล่มาเมื่อมีการติ๊ก checkbox)
+  Widget _buildBulkDeleteBar(int count) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE74C3C).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE74C3C).withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_rounded, color: Color(0xFFE74C3C), size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'เลือกแล้ว $count รายการ',
+              style: const TextStyle(
+                color: Color(0xFFE74C3C),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: _isBulkDeleting ? null : _confirmBulkDelete,
+            icon: _isBulkDeleting
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_outline_rounded, size: 18),
+            label: Text(_isBulkDeleting ? 'กำลังลบ...' : 'ลบที่เลือก'),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFE74C3C),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildViewToggle() {
     return Container(
       decoration: BoxDecoration(
@@ -249,7 +421,6 @@ class _DataListScreenState extends State<DataListScreen> {
     );
   }
 
-  /// แสดงข้อมูลเป็น Cards (ค่าเริ่มต้น)
   Widget _buildCardListView() {
     final items = _filteredItems;
     if (items.isEmpty) {
@@ -263,6 +434,8 @@ class _DataListScreenState extends State<DataListScreen> {
         return ItemCard(
           item: item,
           onTap: () => _showItemModal(item),
+          onEdit: () => _openEdit(item),
+          onDelete: () => _confirmDeleteSingle(item),
           onCheckboxChanged: (value) {
             setState(() => item.isSelected = value ?? false);
           },
@@ -284,7 +457,6 @@ class _DataListScreenState extends State<DataListScreen> {
     );
   }
 
-  /// Grid/Table แสดงผลข้อมูลทั้งหมด พร้อม Checkbox เลือกได้หลายรายการ
   Widget _buildTableView() {
     final items = _filteredItems;
     return Padding(
@@ -311,6 +483,7 @@ class _DataListScreenState extends State<DataListScreen> {
               DataColumn(label: Text('ชื่อ')),
               DataColumn(label: Text('หมวดหมู่')),
               DataColumn(label: Text('รายละเอียด')),
+              DataColumn(label: Text('จัดการ')),
             ],
             rows: items
                 .map(
@@ -340,6 +513,23 @@ class _DataListScreenState extends State<DataListScreen> {
                         ),
                       )),
                       DataCell(Text(item.description)),
+                      DataCell(Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_rounded,
+                                size: 18, color: Color(0xFF0984E3)),
+                            onPressed: () => _openEdit(item),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded,
+                                size: 18, color: Color(0xFFE74C3C)),
+                            onPressed: () => _confirmDeleteSingle(item),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ],
+                      )),
                     ],
                   ),
                 )
