@@ -3,15 +3,11 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/item.dart';
 
-/// รวม logic การเรียก backend API ไว้ในที่เดียว แยกออกจาก UI
-/// เพื่อให้ทดสอบ (unit test) และแก้ไขได้ง่าย โดยไม่ต้องยุ่งกับ widget
-/// (ตอบโจทย์ข้อ 1.3-f: แยก module/service ออกจากกัน)
 class ApiService {
   final String baseUrl;
 
   ApiService({String? baseUrl}) : baseUrl = baseUrl ?? AppConfig.baseUrl;
 
-  /// ดึงรายการข้อมูลทั้งหมดจาก backend เช่น GET /api/items
   Future<List<Item>> fetchItems() async {
     final response = await http
         .get(Uri.parse('$baseUrl/items'))
@@ -24,7 +20,6 @@ class ApiService {
     throw ApiException('โหลดข้อมูลไม่สำเร็จ (สถานะ ${response.statusCode})');
   }
 
-  /// บันทึกข้อมูลใหม่ไปยัง backend เช่น POST /api/items
   Future<Item> saveItem(Item item) async {
     final response = await http
         .post(

@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/item.dart';
 import '../services/api_service.dart';
 
-/// หน้าจอที่ 3: ฟอร์มกรอกข้อมูลและปุ่มบันทึก/ส่งข้อมูลไปยัง backend
-/// ดีไซน์ใหม่: การ์ดฟอร์มเดียวดูเป็นสัดส่วน, ปุ่ม gradient, modal ผลลัพธ์ดูดีขึ้น
-/// (ตอบโจทย์ข้อ 1.3-e)
 class SaveDataScreen extends StatefulWidget {
   const SaveDataScreen({super.key});
 

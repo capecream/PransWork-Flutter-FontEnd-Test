@@ -3,9 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/models/item.dart';
 import 'package:frontend/widgets/item_card.dart';
 
-// หมายเหตุ: ถ้าชื่อ package ใน pubspec.yaml ของคุณไม่ใช่ "frontend"
-// ให้แก้ import ด้านบนให้ตรงกับชื่อ package จริง
-
 void main() {
   testWidgets('ItemCard แสดงชื่อและรายละเอียดถูกต้อง', (tester) async {
     final item = Item(

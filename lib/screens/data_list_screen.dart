@@ -4,12 +4,6 @@ import '../services/api_service.dart';
 import '../widgets/item_card.dart';
 import '../widgets/status_widgets.dart';
 
-/// หน้าจอที่ 2: ดึงข้อมูลจาก API มาแสดงในรูปแบบ Cards อย่างน้อย 2 รายการ
-/// รองรับ Dropdown (filter), Grid/Table (สลับมุมมองแสดงผลทั้งหมด),
-/// Checkbox (เลือกได้มากกว่า 1 รายการ), และ Modal (แสดงรายละเอียด)
-/// ดีไซน์ใหม่: การ์ด/ตารางดูสะอาดขึ้น, ปุ่มสลับมุมมองแบบ segmented,
-/// แสดงจำนวนรายการที่กรองได้
-/// (ตอบโจทย์ข้อ 1.3-d ทั้งหมด)
 class DataListScreen extends StatefulWidget {
   const DataListScreen({super.key});
 

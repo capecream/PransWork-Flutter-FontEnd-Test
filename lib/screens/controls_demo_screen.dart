@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// หน้าจอที่ 1: แสดงตัวอย่างการใช้งาน UI control พื้นฐาน
-/// (Label, TextField, Button) พร้อมคำอธิบายวิธีใช้แต่ละตัว
-/// ดีไซน์ใหม่: การ์ดสีต่อ section, header แนะนำหน้า, ไอคอนประจำแต่ละหัวข้อ
-/// (ตอบโจทย์ข้อ 1.3-b)
 class ControlsDemoScreen extends StatefulWidget {
   const ControlsDemoScreen({super.key});
 
